@@ -1,0 +1,33 @@
+{
+  "name": "@pasa-trader/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:prepare": "prisma migrate deploy && tsx prisma/seed.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@pasa-trader/agents": "workspace:*",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "prisma": "^7.8.0",
+    "tsx": "^4.22.4"
+  },
+  "license": "Apache-2.0"
+}

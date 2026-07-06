@@ -1,0 +1,81 @@
+x-app-database-env: &app-database-env
+  DATABASE_URL: postgres://${POSTGRES_USER:-pasatrader}:${POSTGRES_PASSWORD:-pasatrader}@postgres:5432/${POSTGRES_DB:-pasatrader}
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    depends_on:
+      - web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  web:
+    build:
+      context: .
+      target: web
+    restart: unless-stopped
+    environment:
+      <<: *app-database-env
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+      CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?CREDENTIAL_ENCRYPTION_KEY must be set in .env - run install.sh or 'openssl rand -base64 32'}"
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Pasa Trader Platform}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    environment:
+      <<: *app-database-env
+      CREDENTIAL_ENCRYPTION_KEY: "${CREDENTIAL_ENCRYPTION_KEY:?CREDENTIAL_ENCRYPTION_KEY must be set in .env - run install.sh or 'openssl rand -base64 32'}"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+
+  migrate:
+    build:
+      context: .
+      target: worker
+    command: ["pnpm", "--dir", "packages/db", "db:prepare"]
+    environment:
+      <<: *app-database-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pasatrader}
+      POSTGRES_USER: ${POSTGRES_USER:-pasatrader}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pasatrader}
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:

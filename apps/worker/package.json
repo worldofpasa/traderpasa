@@ -1,0 +1,26 @@
+{
+  "name": "@pasa-trader/worker",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx src/index.ts",
+    "smoke": "tsx src/smoke.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@pasa-trader/adapters": "workspace:*",
+    "@pasa-trader/agents": "workspace:*",
+    "@pasa-trader/core": "workspace:*",
+    "@pasa-trader/db": "workspace:*",
+    "@pasa-trader/schemas": "workspace:*",
+    "graphile-worker": "^0.16.6",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.20.0"
+  },
+  "license": "Apache-2.0"
+}

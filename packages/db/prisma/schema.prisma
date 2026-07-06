@@ -1,0 +1,568 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum AuditActorType {
+  SYSTEM
+  USER
+}
+
+enum CredentialKind {
+  BROKER
+  MODEL_PROVIDER
+  SOURCE_PROVIDER
+  NOTIFICATION_PROVIDER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  liveAccessPinHash String?
+  role         UserRole @default(USER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs         AuditLog[]
+  credentials       Credential[]
+  sessions          Session[]
+  brokerAccounts    BrokerAccount[]
+  strategyInstances StrategyInstance[]
+  notifications     Notification[]
+  agentTemplates    AgentTemplate[]
+
+  @@index([role])
+}
+
+model Credential {
+  id               String         @id @default(uuid())
+  userId           String
+  kind             CredentialKind
+  provider         String
+  label            String
+  encryptedPayload String
+  iv               String
+  authTag          String
+  keyVersion       String         @default("v1")
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerAccounts BrokerAccount[]
+
+  @@index([userId, kind, provider])
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  tokenHash     String    @unique
+  csrfTokenHash String?
+  userId        String
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+  revokedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([tokenHash, revokedAt, expiresAt])
+}
+
+model AuditLog {
+  id        String         @id @default(uuid())
+  actorType AuditActorType
+  actorId   String?
+  action    String
+  target    String
+  metadata  Json?
+  createdAt DateTime       @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorType, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+}
+
+// ─── Broker ────────────────────────────────────────────────────────────────
+
+enum BrokerEnvironment {
+  PAPER
+  LIVE
+}
+
+enum BrokerAccountStatus {
+  UNTESTED
+  CONNECTED
+  ERROR
+}
+
+model BrokerAccount {
+  id              String              @id @default(uuid())
+  userId          String
+  credentialId    String
+  provider        String
+  label           String
+  environment     BrokerEnvironment
+  brokerAccountId String?
+  status          BrokerAccountStatus @default(UNTESTED)
+  lastTestedAt    DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credential         Credential         @relation(fields: [credentialId], references: [id], onDelete: Restrict)
+  strategyInstances  StrategyInstance[]
+  orderRecords       OrderRecord[]
+
+  @@index([userId, environment])
+  @@index([credentialId])
+}
+
+// ─── Strategy ──────────────────────────────────────────────────────────────
+
+enum StrategyKind {
+  LONG_TERM_ALLOCATION
+  MOMENTUM
+  SCALPING_DAY_TRADE_TEST
+  NEWS_DRIVEN
+  INSIDER_POLITICAL_TRADE_FOLLOWING
+}
+
+enum StrategyInstanceStatus {
+  ENABLED
+  DISABLED
+  DELETED
+}
+
+enum WatchlistMode {
+  MANUAL
+  DYNAMIC
+}
+
+enum OutputMode {
+  PROPOSED_ORDERS
+  RANKED_IDEAS
+}
+
+enum ExecutionMode {
+  PAPER
+  LIVE
+}
+
+enum ModelLoggingDepth {
+  METADATA
+  FULL
+}
+
+model StrategyTemplate {
+  id            String       @id @default(uuid())
+  kind          StrategyKind @unique
+  name          String
+  description   String
+  defaultConfig Json
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  instances StrategyInstance[]
+}
+
+model StrategyInstance {
+  id               String                 @id @default(uuid())
+  userId           String
+  templateId       String
+  brokerAccountId  String?
+  name             String
+  description      String?
+  status           StrategyInstanceStatus @default(DISABLED)
+  watchlistMode    WatchlistMode          @default(MANUAL)
+  symbols          String[]               @default([])
+  sourceConfig     Json                   @default("{}")
+  riskConfig       Json                   @default("{}")
+  outputMode       OutputMode             @default(PROPOSED_ORDERS)
+  executionMode    ExecutionMode          @default(PAPER)
+  liveAcknowledgedAt DateTime?
+  marketSessionRules Json                 @default("{}")
+  scheduleConfig   Json?
+  trailingStopConfig Json?
+  modelLoggingDepth ModelLoggingDepth     @default(METADATA)
+  stepModelConfig  Json                   @default("{}")
+  agentTeamConfig  Json                   @default("{}")
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template      StrategyTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  brokerAccount BrokerAccount?   @relation(fields: [brokerAccountId], references: [id], onDelete: SetNull)
+
+  evidenceBundles      EvidenceBundle[]
+  proposedOrderPackets ProposedOrderPacket[]
+  jobRuns              JobRun[]
+  notifications        Notification[]
+
+  @@index([userId, status])
+  @@index([templateId])
+  @@index([brokerAccountId])
+}
+
+// ─── Evidence ──────────────────────────────────────────────────────────────
+
+enum EvidenceBundleStatus {
+  COMPLETE
+  PARTIAL
+  FAILED
+}
+
+enum EvidenceItemStatus {
+  SUCCEEDED
+  FAILED
+  STALE
+  SKIPPED
+  PARTIAL
+}
+
+enum SourceReliabilityClass {
+  OFFICIAL_API
+  OFFICIAL_SCRAPE
+  THIRD_PARTY_API
+  BEST_EFFORT_SCRAPE
+}
+
+model EvidenceBundle {
+  id                 String               @id @default(uuid())
+  strategyInstanceId String
+  jobRunId           String?
+  status             EvidenceBundleStatus @default(PARTIAL)
+  sourceResults      Json                 @default("{}")
+  runAt              DateTime
+  createdAt          DateTime             @default(now())
+
+  strategyInstance StrategyInstance @relation(fields: [strategyInstanceId], references: [id], onDelete: Cascade)
+  jobRun           JobRun?          @relation(fields: [jobRunId], references: [id], onDelete: SetNull)
+  evidenceItems    EvidenceItem[]
+  orderPackets     ProposedOrderPacket[]
+
+  @@index([strategyInstanceId, runAt])
+  @@index([jobRunId])
+}
+
+model EvidenceItem {
+  id               String                 @id @default(uuid())
+  bundleId         String
+  sourceId         String
+  sourceName       String
+  reliabilityClass SourceReliabilityClass
+  status           EvidenceItemStatus
+  observedAt       DateTime
+  staleAt          DateTime?
+  symbols          String[]               @default([])
+  title            String
+  summary          String
+  url              String?
+  warnings         String[]               @default([])
+  payloadRef       String?
+  createdAt        DateTime               @default(now())
+
+  bundle EvidenceBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@index([bundleId, sourceId])
+  @@index([bundleId, status])
+}
+
+// ─── Proposed Orders ───────────────────────────────────────────────────────
+
+enum PacketStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  EXECUTED
+  EXPIRED
+}
+
+enum ProposedOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  CANCELLED
+}
+
+enum OrderSide {
+  BUY
+  SELL
+  SELL_SHORT
+  BUY_TO_COVER
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+model ProposedOrderPacket {
+  id                 String       @id @default(uuid())
+  strategyInstanceId String
+  evidenceBundleId   String?
+  jobRunId           String?
+  status             PacketStatus @default(DRAFT)
+  rationale          String
+  uncertaintyNote    String?
+  agentRunMetadata   Json?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  strategyInstance StrategyInstance @relation(fields: [strategyInstanceId], references: [id], onDelete: Cascade)
+  evidenceBundle   EvidenceBundle?  @relation(fields: [evidenceBundleId], references: [id], onDelete: SetNull)
+  jobRun           JobRun?          @relation(fields: [jobRunId], references: [id], onDelete: SetNull)
+  proposedOrders   ProposedOrder[]
+
+  @@index([strategyInstanceId, status])
+  @@index([evidenceBundleId])
+}
+
+model ProposedOrder {
+  id              String              @id @default(uuid())
+  packetId        String
+  symbol          String
+  side            OrderSide
+  quantity        Int
+  orderType       OrderType
+  limitPrice      Decimal?            @db.Decimal(18, 8)
+  environment     BrokerEnvironment
+  brokerAccountId String
+  rationale       String
+  evidenceItemIds String[]            @default([])
+  riskResult      Json?
+  status          ProposedOrderStatus @default(PENDING)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  packet      ProposedOrderPacket @relation(fields: [packetId], references: [id], onDelete: Cascade)
+  orderRecord OrderRecord?
+
+  @@index([packetId, status])
+  @@index([symbol, environment])
+}
+
+// ─── Execution ─────────────────────────────────────────────────────────────
+
+enum OrderRecordStatus {
+  SUBMITTED
+  FILLED
+  PARTIAL_FILL
+  CANCELLED
+  REJECTED
+  FAILED
+}
+
+model OrderRecord {
+  id                String            @id @default(uuid())
+  proposedOrderId   String            @unique
+  brokerAccountId   String
+  brokerOrderId     String?
+  symbol            String
+  side              OrderSide
+  quantity          Int
+  orderType         OrderType
+  limitPrice        Decimal?          @db.Decimal(18, 8)
+  fillPrice         Decimal?          @db.Decimal(18, 8)
+  filledAt          DateTime?
+  environment       BrokerEnvironment
+  status            OrderRecordStatus @default(SUBMITTED)
+  stopProtected     Boolean           @default(false)
+  trailingStopOrderId String?
+  stopPlacementError  String?
+  stopRetryCount      Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  proposedOrder ProposedOrder @relation(fields: [proposedOrderId], references: [id], onDelete: Restrict)
+  brokerAccount BrokerAccount @relation(fields: [brokerAccountId], references: [id], onDelete: Restrict)
+
+  @@index([brokerAccountId, environment, createdAt])
+  @@index([symbol, environment, createdAt])
+  @@index([brokerOrderId])
+}
+
+// ─── Jobs ──────────────────────────────────────────────────────────────────
+
+enum JobRunStatus {
+  RUNNING
+  COMPLETED
+  PARTIAL
+  NEEDS_ACTION
+  SKIPPED
+  FAILED
+  RETRYING
+}
+
+enum AgentStepPhase {
+  EVIDENCE
+  AGENT
+  RISK
+  EXECUTION
+}
+
+enum AgentStepStatus {
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+  SKIPPED
+}
+
+enum AgentCategory {
+  ANALYST
+  RESEARCHER
+  MANAGER
+  TRADER
+  RISK_DEBATOR
+}
+
+enum AgentSpecialization {
+  MARKET
+  SENTIMENT
+  NEWS
+  FUNDAMENTALS
+  BULL
+  BEAR
+  RESEARCH_MANAGER
+  PORTFOLIO_MANAGER
+  TRADER
+  AGGRESSIVE
+  CONSERVATIVE
+  NEUTRAL
+}
+
+model AgentTemplate {
+  id                String              @id @default(uuid())
+  slug              String
+  name              String
+  category          AgentCategory
+  role              String
+  specialization    AgentSpecialization
+  description       String
+  systemPrompt      String              @db.Text
+  userPromptTemplate String             @db.Text
+  outputType        String
+  variables         Json
+  toolRefs          Json
+  defaultDebateSide String?
+  isBuiltin         Boolean             @default(false)
+  userId            String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([slug, userId])
+  @@index([category])
+  @@index([userId])
+  @@index([isBuiltin])
+}
+
+model AgentStep {
+  id               String          @id @default(uuid())
+  jobRunId         String
+  phase            AgentStepPhase
+  stepIndex        Int
+  name             String
+  role             String?
+  agentId          String?
+  status           AgentStepStatus @default(RUNNING)
+  startedAt        DateTime        @default(now())
+  finishedAt       DateTime?
+  durationMs       Int?
+  promptTokens     Int?
+  completionTokens Int?
+  outputData       Json?
+  errorMessage     String?
+  metadata         Json?
+  createdAt        DateTime        @default(now())
+
+  jobRun JobRun @relation(fields: [jobRunId], references: [id], onDelete: Cascade)
+
+  @@index([jobRunId, phase, stepIndex])
+}
+
+model JobRun {
+  id                    String       @id @default(uuid())
+  jobType               String
+  queue                 String
+  strategyInstanceId    String?
+  status                JobRunStatus @default(RUNNING)
+  startedAt             DateTime     @default(now())
+  finishedAt            DateTime?
+  durationMs            Int?
+  retryCount            Int          @default(0)
+  errorCode             String?
+  errorMessage          String?
+  outputRefs            Json?
+  resumedFromJobRunId   String?
+  resumedFromStepIndex  Int?
+  createdAt             DateTime     @default(now())
+
+  strategyInstance StrategyInstance? @relation(fields: [strategyInstanceId], references: [id], onDelete: SetNull)
+  resumedFrom      JobRun?           @relation("ResumedFrom", fields: [resumedFromJobRunId], references: [id], onDelete: SetNull)
+  resumedBy        JobRun[]          @relation("ResumedFrom")
+  evidenceBundles  EvidenceBundle[]
+  orderPackets     ProposedOrderPacket[]
+  agentSteps       AgentStep[]
+
+  @@index([strategyInstanceId, status])
+  @@index([jobType, status, startedAt])
+  @@index([resumedFromJobRunId])
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+
+enum NotificationKind {
+  BROKER_OUTAGE
+  EXECUTION_FAILURE
+  RISK_BLOCK
+  MISSING_EVIDENCE
+  STOP_FAILURE
+  PAPER_EXECUTED
+  LIVE_EXECUTED
+  STRATEGY_CONFLICT
+  GENERIC
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+model Notification {
+  id                 String               @id @default(uuid())
+  userId             String
+  kind               NotificationKind
+  severity           NotificationSeverity @default(INFO)
+  title              String
+  message            String
+  strategyInstanceId String?
+  relatedId          String?
+  read               Boolean              @default(false)
+  readAt             DateTime?
+  createdAt          DateTime             @default(now())
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  strategyInstance StrategyInstance? @relation(fields: [strategyInstanceId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read, createdAt])
+  @@index([userId, kind, createdAt])
+}

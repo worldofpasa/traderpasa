@@ -1,0 +1,26 @@
+{
+  "name": "@pasa-trader/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc -b",
+    "agent-team:migrate": "tsx src/migrate-agent-team-configs.ts"
+  },
+  "dependencies": {
+    "@pasa-trader/adapters": "workspace:*",
+    "@pasa-trader/agents": "workspace:*",
+    "@pasa-trader/db": "workspace:*",
+    "@pasa-trader/schemas": "workspace:*",
+    "argon2": "^0.44.0"
+  },
+  "license": "Apache-2.0"
+}

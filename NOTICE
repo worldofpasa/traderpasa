@@ -1,0 +1,23 @@
+TraderPasa
+Copyright 2025 worldofpasa contributors
+
+Licensed under the Apache License, Version 2.0.
+
+-------------------------------------------------------------------------------
+IMPORTANT RISK DISCLAIMER
+-------------------------------------------------------------------------------
+
+TraderPasa is a self-hosted tool for automating personal trading strategies.
+It can execute real trades with real money against live broker accounts.
+
+  - This software is NOT financial advice.
+  - Past performance does not guarantee future results.
+  - Automated trading carries significant financial risk, including total loss
+    of invested capital.
+  - Always test strategies in paper trading mode before enabling live execution.
+  - You are solely responsible for all trading decisions, outcomes, and any
+    applicable regulatory or tax obligations.
+  - The authors and contributors provide this software AS IS, with NO WARRANTY
+    of any kind. See the LICENSE file for full terms.
+
+If you do not accept these terms, do not use this software.

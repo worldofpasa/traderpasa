@@ -1,0 +1,30 @@
+name: Feature Request
+description: Suggest an enhancement for TraderPasa
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the use case or pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety acknowledgment
+      options:
+        - label: This request does not weaken the safety invariants (AI never executes trades, hard risk blocks cannot be overridden, live trading requires acknowledgment).
+          required: true

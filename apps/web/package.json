@@ -1,0 +1,31 @@
+{
+  "name": "@pasa-trader/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --hostname 0.0.0.0 --port 3000",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@pasa-trader/agents": "workspace:*",
+    "@pasa-trader/core": "workspace:*",
+    "@pasa-trader/db": "workspace:*",
+    "@pasa-trader/schemas": "workspace:*",
+    "@pasa-trader/ui": "workspace:*",
+    "@xyflow/react": "^12.11.0",
+    "graphile-worker": "^0.16.6",
+    "lucide-react": "^1.17.0",
+    "next": "^16.2.7",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,10 @@
+# Production Caddyfile — automatic HTTPS via Let's Encrypt.
+# Set DOMAIN in your .env (e.g. DOMAIN=trader.example.com) and set
+# AUTH_COOKIE_SECURE=true. Then point compose's caddy service at this file:
+#   volumes:
+#     - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+# and publish ports "80:80" and "443:443".
+
+{$DOMAIN} {
+	reverse_proxy web:3000
+}

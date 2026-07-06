@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# DATABASE_URL points at the ephemeral postgres service container below —
+# these are throwaway credentials that exist only inside the CI runner.
+# CREDENTIAL_ENCRYPTION_KEY is generated fresh per run (first job step).
+env:
+  DATABASE_URL: postgres://pasatrader:pasatrader@127.0.0.1:55432/pasatrader
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: pasatrader
+          POSTGRES_USER: pasatrader
+          POSTGRES_PASSWORD: pasatrader
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U pasatrader -d pasatrader"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Generate ephemeral credential encryption key
+        run: echo "CREDENTIAL_ENCRYPTION_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @pasa-trader/db exec prisma generate
+
+      # tsc -b also builds package dists, which the seed script imports
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Apply migrations and seed templates
+        run: pnpm --filter @pasa-trader/db run db:prepare
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Integration tests (real PostgreSQL)
+        run: pnpm test:integration
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

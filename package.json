@@ -1,0 +1,44 @@
+{
+  "name": "traderpasa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted operating system for automated trading.",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "pnpm typecheck && pnpm --filter @pasa-trader/web build",
+    "compose:down": "sh scripts/compose/down.sh",
+    "compose:restart": "sh scripts/compose/restart.sh",
+    "compose:up": "sh scripts/compose/up.sh",
+    "dev:web": "pnpm --filter @pasa-trader/web dev",
+    "dev:worker": "pnpm --filter @pasa-trader/worker dev",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc -b",
+    "worker:smoke": "pnpm --filter @pasa-trader/worker smoke"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "^16.2.7",
+    "@pasa-trader/core": "workspace:*",
+    "@pasa-trader/db": "workspace:*",
+    "@playwright/test": "^1.60.0",
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@types/node": "^25.9.1",
+    "eslint": "^10.4.1",
+    "globals": "^17.6.0",
+    "prettier": "^3.8.3",
+    "tsx": "^4.22.4",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.60.1",
+    "vitest": "^4.1.8"
+  }
+}
