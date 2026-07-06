@@ -11,6 +11,14 @@ TraderPasa is a self-hosted operating system for automated trading. It turns str
 - A custody service
 - A public strategy marketplace
 
+## Screenshots
+
+![Dashboard overview](docs/screenshots/dashboard.png)
+<p align="center"><sub>Self-hosted dashboard — brokerage status, active automations, and pending order review.</sub></p>
+
+![Strategy agent graph](docs/screenshots/agent-graph.png)
+<p align="center"><sub>Each strategy is a typed agent pipeline (evidence → proposed orders), runnable in paper or live mode.</sub></p>
+
 Designed for a single technical operator running their own trading automation on their own infrastructure.
 
 ---
