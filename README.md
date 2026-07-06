@@ -13,9 +13,9 @@ TraderPasa is a self-hosted operating system for automated trading. It turns str
 
 ## Demo
 
-<video src="https://raw.githubusercontent.com/worldofpasa/traderpasa/main/docs/screenshots/demo.mp4" controls muted loop playsinline width="900"></video>
+<a href="docs/screenshots/demo.mp4"><img src="docs/screenshots/demo.gif" alt="TraderPasa product tour" width="900"></a>
 
-<p align="center"><sub>Sign in → dashboard → fork a strategy → its typed agent pipeline (evidence → proposed orders). (Video not playing? See the <a href="docs/screenshots/demo.gif">GIF</a>.)</sub></p>
+<p align="center"><sub>Sign in → dashboard → fork a strategy → its typed agent pipeline (evidence → proposed orders). Click the GIF for the full-quality <a href="docs/screenshots/demo.mp4">video</a>.</sub></p>
 
 ## Screenshots
 
